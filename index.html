@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TV Guide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="search-container">
+        <input id="search-input" type="text" placeholder="Search for a show">
+        <button id="search-button" onclick="handleSearch()">Search</button>
+    </div>
+
+    <div id="shows-container"></div>
+    <header class="page-header">
+        <h1>TV Guide</h1>
+        <button id="refresh-guide">Refresh</button>
+        <span id="guide-status">Loading schedule...</span>
+    </header>
+
+    <div class="guide-viewport" id="guide-viewport">
+        <div id="tv-guide"></div>
+    </div>
+
+    <div id="show-modal" class="modal-overlay" hidden>
+        <div class="show-modal-content"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="modal-title">
+
+            <button id="close-modal" class="close-modal"
+                    aria-label="Close popup">&times;</button>
+
+            <img id="modal-image" src="" alt="">
+
+            <div class="modal-details">
+                <h2 id="modal-title"></h2>
+                <p id="modal-runtime"></p>
+                <div id="modal-description"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
