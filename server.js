@@ -268,6 +268,7 @@ app.put("/api/episodes/:id/rating", requireLogin, async (req, res) => {
 });
 
 
+
 app.get("/api/users/me/ratings", requireLogin, async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -278,12 +279,64 @@ app.get("/api/users/me/ratings", requireLogin, async (req, res) => {
             [req.session.user.id]
         );
 
-        res.json({ ratings: rows });
+        const ratings = await Promise.all(
+            rows.map(async (row) => {
+                try {
+                    const response = await fetch(
+                        `https://api.tvmaze.com/episodes/${row.tvmaze_episode_id}`
+                    );
+
+                    if (!response.ok) {
+                        throw new Error("Episode not found");
+                    }
+
+                    const episode = await response.json();
+
+                    // TVmaze's episode endpoint does not include
+                    // the show's details, so fetch the show separately.
+                    const showResponse = await fetch(
+                        `https://api.tvmaze.com/shows/${episode._links.show.href.split("/").pop()}`
+                    );
+
+                    const show = showResponse.ok
+                        ? await showResponse.json()
+                        : null;
+
+                    return {
+                        tvmaze_episode_id: row.tvmaze_episode_id,
+                        rating: row.rating,
+                        name: episode.name,
+                        showName: show?.name || "Unknown show",
+                        image: episode.image?.medium
+                            || show?.image?.medium
+                            || null
+                    };
+                } catch (error) {
+                    console.error(
+                        `Could not load episode ${row.tvmaze_episode_id}:`,
+                        error.message
+                    );
+
+                    return {
+                        tvmaze_episode_id: row.tvmaze_episode_id,
+                        rating: row.rating,
+                        name: "Episode details unavailable",
+                        showName: "Unknown show",
+                        image: null
+                    };
+                }
+            })
+        );
+
+        res.json({ ratings });
     } catch (error) {
         console.error("Could not load user ratings:", error);
-        res.status(500).json({ error: "Could not load your ratings." });
+        res.status(500).json({
+            error: "Could not load your ratings."
+        });
     }
 });
+
 
 // Delete a rating
 app.delete("/api/episodes/:id/rating", requireLogin, async (req, res) => {

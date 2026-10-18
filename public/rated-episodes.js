@@ -112,7 +112,7 @@ function renderRatedEpisodes(episodes) {
         details.className = "rated-episode-details";
 
         const showName = document.createElement("h3");
-        showName.textContent = episode.showName;
+        showName.textContent = episode.showName || "Unknown show";
 
         const episodeName = document.createElement("p");
         episodeName.className = "rated-episode-name";
