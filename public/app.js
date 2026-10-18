@@ -1,6 +1,8 @@
 const API_URL = "https://api.tvmaze.com";
 const API_KEY = "VUqlkNdRXXNofKzvZma55dVo7f3yUn74";
 
+let loggedInUser = null;
+
 async function fetchTVmaze(endpoint) {
     const response = await fetch(`${API_URL}${endpoint}`);
 
@@ -282,13 +284,13 @@ function renderTVGuide(programs, now, end) {
             );
 
             block.addEventListener("click", () => {
-                openShowModal(ep);
+                openShowPopup(ep);
             });
 
             block.addEventListener("keydown", event => {
                 if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    openShowModal(ep);
+                    openShowPopup(ep);
                 }
             });
 
@@ -333,16 +335,16 @@ function renderTVGuide(programs, now, end) {
     }
 }
 
-const showModal = document.getElementById("show-modal");
-const closeModalButton = document.getElementById("close-modal");
+const showPopup = document.getElementById("show-popup");
+const closePopupButton = document.getElementById("close-popup");
 
-function openShowModal(ep) {
+function openShowPopup(ep) {
     const show = ep.show;
 
-    const image = document.getElementById("modal-image");
-    const title = document.getElementById("modal-title");
-    const runtime = document.getElementById("modal-runtime");
-    const description = document.getElementById("modal-description");
+    const image = document.getElementById("popup-image");
+    const title = document.getElementById("popup-title");
+    const runtime = document.getElementById("popup-runtime");
+    const description = document.getElementById("popup-description");
 
     // Use the episode image first, then the show's cover art.
     image.src =
@@ -381,27 +383,177 @@ function openShowModal(ep) {
     description.textContent =
         parsed.body.textContent.trim() || "No description available.";
 
-    showModal.hidden = false;
-    closeModalButton.focus();
+    showPopup.hidden = false;
+    closePopupButton.focus();
+
+    loadEpisodeRating(ep);
 }
 
-function closeShowModal() {
-    showModal.hidden = true;
+function closeShowPopup() {
+    showPopup.hidden = true;
 }
 
-closeModalButton.addEventListener("click", closeShowModal);
+closePopupButton.addEventListener("click", closeShowPopup);
 
-showModal.addEventListener("click", event => {
-    if (event.target === showModal) {
-        closeShowModal();
+showPopup.addEventListener("click", event => {
+    if (event.target === showPopup) {
+        closeShowPopup();
     }
 });
 
 document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !showModal.hidden) {
-        closeShowModal();
+    if (event.key === "Escape" && !showPopup.hidden) {
+        closeShowPopup();
     }
 });
+
+
+async function loadEpisodeRating(ep) {
+    const section = document.getElementById("episode-rating");
+
+    if (!section) return;
+
+    section.replaceChildren();
+
+    // Ratings are visible only to logged-in users.
+    if (!loggedInUser) {
+        section.hidden = true;
+        return;
+    }
+
+    section.hidden = false;
+
+    const heading = document.createElement("h3");
+    heading.textContent = "Episode Rating";
+
+    const communityRating = document.createElement("p");
+    communityRating.id = "community-rating";
+    communityRating.textContent = "Loading ratings...";
+
+    const controls = document.createElement("div");
+    controls.id = "rating-controls";
+
+    const prompt = document.createElement("p");
+    prompt.textContent = "Rate this episode:";
+
+    const stars = document.createElement("div");
+    stars.className = "rating-stars";
+    stars.setAttribute("role", "group");
+    stars.setAttribute("aria-label", "Choose a rating from one to five stars");
+
+    const message = document.createElement("p");
+    message.id = "rating-message";
+    message.setAttribute("aria-live", "polite");
+
+    let selectedRating = 0;
+
+    const starButtons = [];
+
+    for (let value = 1; value <= 5; value++) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "★";
+        button.setAttribute("aria-label", `${value} star${value > 1 ? "s" : ""}`);
+        button.setAttribute("aria-pressed", "false");
+
+        button.addEventListener("click", () => {
+            selectedRating = value;
+
+            starButtons.forEach((star, index) => {
+                const selected = index < selectedRating;
+                star.classList.toggle("selected", selected);
+                star.setAttribute("aria-pressed", String(selected));
+            });
+
+            message.textContent = `Selected ${value} out of 5 stars.`;
+        });
+
+        starButtons.push(button);
+        stars.appendChild(button);
+    }
+
+    const submit = document.createElement("button");
+    submit.id = "submit-rating";
+    submit.type = "button";
+    submit.textContent = "Submit rating";
+    submit.disabled = true;
+
+    // Enable submission after a star is selected.
+    stars.addEventListener("click", () => {
+        submit.disabled = selectedRating === 0;
+    });
+
+    submit.addEventListener("click", async () => {
+        if (!selectedRating) return;
+
+        submit.disabled = true;
+        message.textContent = "Saving rating...";
+
+        try {
+            const response = await fetch(
+                `/api/episodes/${encodeURIComponent(ep.id)}/rating`,
+                {
+                    method: "PUT",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ rating: selectedRating })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Could not save rating.");
+            }
+
+            message.textContent = "Your rating has been saved.";
+
+            await loadEpisodeRating(ep);
+        } catch (error) {
+            message.textContent = error.message;
+            submit.disabled = false;
+        }
+    });
+
+    controls.append(prompt, stars, submit);
+    section.append(heading, communityRating, controls, message);
+
+    try {
+        const response = await fetch(
+            `/api/episodes/${encodeURIComponent(ep.id)}/rating`,
+            { credentials: "same-origin" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load ratings.");
+        }
+
+        communityRating.textContent = data.count > 0
+            ? `Community rating: ${Number(data.average).toFixed(1)}/5 (${data.count} ratings)`
+            : "No ratings yet.";
+
+        if (data.myRating) {
+            selectedRating = data.myRating;
+
+            starButtons.forEach((star, index) => {
+                const selected = index < selectedRating;
+                star.classList.toggle("selected", selected);
+                star.setAttribute("aria-pressed", String(selected));
+            });
+
+            submit.disabled = false;
+            message.textContent = `Your current rating: ${selectedRating}/5.`;
+        }
+    } catch (error) {
+        communityRating.textContent = "Ratings are temporarily unavailable.";
+        console.error("Could not load episode ratings:", error);
+    }
+}
+
 
 document.getElementById("refresh-guide")
     .addEventListener("click", loadTVGuide);
@@ -410,3 +562,191 @@ loadTVGuide();
 
 // Refresh every minute so the timeline follows the current time.
 setInterval(loadTVGuide, 60_000);
+
+// Login Front End System
+/*const authModal = document.getElementById("auth-modal");
+const authForm = document.getElementById("auth-form");
+const authTitle = document.getElementById("auth-title");
+const authSubtitle = document.getElementById("auth-subtitle");
+const authSubmit = document.getElementById("auth-submit");
+const authSwitch = document.getElementById("auth-switch");
+const authMessage = document.getElementById("auth-message");*/
+
+async function restoreLogin() {
+    const area = document.getElementById("account-area");
+
+    try {
+        const response = await fetch("/api/auth/me", {
+            credentials: "same-origin"
+        });
+
+        if (!response.ok) {
+            throw new Error("Could not check login status.");
+        }
+
+        const data = await response.json();
+
+        if (data.user) {
+            renderAccount(data.user);
+        } else {
+            renderLoggedOut();
+        }
+    } catch (error) {
+        console.error(error);
+        renderLoggedOut();
+    }
+}
+
+function renderLoggedOut() {
+    loggedInUser = null;
+
+    const area = document.getElementById("account-area");
+    area.replaceChildren();
+
+    const login = document.createElement("a");
+    login.href = "login.html";
+    login.className = "account-button";
+    login.textContent = "Log In";
+
+    const signup = document.createElement("a");
+    signup.href = "signup.html";
+    signup.className = "signup-button";
+    signup.textContent = "Sign Up";
+
+    area.append(login, signup);
+}
+
+
+function renderAccount(user) {
+    loggedInUser = user;
+
+    const area = document.getElementById("account-area");
+    area.replaceChildren();
+
+    const menu = document.createElement("div");
+    menu.className = "account-dropdown";
+
+    const trigger = document.createElement("button");
+    trigger.className = "account-trigger";
+    trigger.type = "button";
+    trigger.setAttribute("aria-expanded", "false");
+
+    const avatar = document.createElement("span");
+    avatar.className = "user-avatar";
+    avatar.textContent = (user.username || "U").charAt(0).toUpperCase();
+
+    const username = document.createElement("span");
+    username.className = "account-trigger-name";
+    username.textContent = user.username;
+
+    const arrow = document.createElement("span");
+    arrow.textContent = "▾";
+    arrow.setAttribute("aria-hidden", "true");
+
+    trigger.append(avatar, username, arrow);
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "account-dropdown-menu";
+    dropdown.hidden = true;
+
+    function addMenuItem(label, action, className = "") {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+
+        if (className) button.className = className;
+
+        button.addEventListener("click", () => {
+            dropdown.hidden = true;
+            trigger.setAttribute("aria-expanded", "false");
+            action();
+        });
+
+        dropdown.appendChild(button);
+    }
+
+    addMenuItem("★  My Rated Episodes", () => {
+        window.location.href = "/rated-episodes.html";
+    });
+
+    addMenuItem("⚙  My Profile", () => {
+        window.location.href = "/profile.html";
+    });
+
+    addMenuItem("Log Out", async () => {
+        try {
+            const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "same-origin"
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Could not log out.");
+            }
+
+            window.location.href = "/";
+        } catch (error) {
+            alert(error.message);
+        }
+    }, "dropdown-logout");
+
+    trigger.addEventListener("click", () => {
+        const isOpening = dropdown.hidden;
+        dropdown.hidden = !isOpening;
+        trigger.setAttribute("aria-expanded", String(isOpening));
+    });
+
+    document.addEventListener("click", event => {
+        if (!menu.contains(event.target)) {
+            dropdown.hidden = true;
+            trigger.setAttribute("aria-expanded", "false");
+        }
+    });
+
+    menu.append(trigger, dropdown);
+    area.appendChild(menu);
+}
+
+
+restoreLogin();
+
+// Password visibility toggle.
+// Only runs on pages containing the password toggle elements.
+
+const passwordInput = document.getElementById("auth-password");
+const passwordToggle = document.getElementById("toggle-password");
+const eyeIcon = document.getElementById("eye-icon");
+
+if (passwordInput && passwordToggle && eyeIcon) {
+    passwordToggle.addEventListener("click", () => {
+        const showPassword = passwordInput.type === "password";
+
+        passwordInput.type = showPassword ? "text" : "password";
+
+        passwordToggle.setAttribute(
+            "aria-label",
+            showPassword ? "Hide password" : "Show password"
+        );
+
+        passwordToggle.setAttribute(
+            "aria-pressed",
+            String(showPassword)
+        );
+
+        eyeIcon.innerHTML = showPassword
+            ? `
+                <path d="M3 3l18 18"/>
+                <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/>
+                <path d="M9.9 5.2A11 11 0 0 1 12 5
+                         c6.5 0 10 7 10 7a16 16 0 0 1-4 4.7"/>
+                <path d="M6.2 6.2C3.5 8 2 12 2 12
+                         s3.5 7 10 7a10 10 0 0 0 3-.5"/>
+            `
+            : `
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+            `;
+    });
+}

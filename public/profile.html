@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Profile - TV Guide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="page-header">
+    <h1>My Profile</h1>
+    <a href="/">Back to TV Guide</a>
+</header>
+
+<main class="profile-page">
+    <section class="profile-card">
+        <h2>Change username</h2>
+
+        <form id="username-form">
+            <label for="new-username">New username</label>
+            <input id="new-username" name="username"
+                   minlength="3" maxlength="50"
+                   pattern="[A-Za-z0-9_]{3,50}" required>
+
+            <button type="submit">Save username</button>
+        </form>
+
+        <p id="profile-message" aria-live="polite"></p>
+    </section>
+
+    <section class="profile-card danger-zone">
+        <h2>Delete account</h2>
+        <p>This permanently deletes your account and your episode ratings.</p>
+
+        <button id="delete-account" type="button">
+            Delete my account
+        </button>
+    </section>
+</main>
+
+<script src="profile.js"></script>
+</body>
+</html>

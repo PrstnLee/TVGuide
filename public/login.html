@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Log In | TV Guide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+<main class="auth-card">
+    <a class="auth-brand" href="/public">TV Guide</a>
+
+    <h1>Welcome back</h1>
+    <p>Log in to your TV Guide account.</p>
+
+    <form id="login-form">
+        <label for="username">Username</label>
+        <input
+                id="username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                minlength="3"
+                maxlength="50"
+                required
+        >
+
+        <label for="password">Password</label>
+        <div class="password-wrapper">
+            <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+            >
+            <button
+                    type="button"
+                    class="password-toggle"
+                    data-password-toggle="password"
+                    aria-label="Show password"
+                    aria-pressed="false"
+            >Show</button>
+        </div>
+
+        <button class="auth-primary" type="submit">Log In</button>
+        <p id="auth-message" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="auth-footer">
+        Don't have an account? <a href="signup.html">Sign up</a>
+    </p>
+    <a class="back-link" href="index.html">Back to TV Guide</a>
+</main>
+
+<script src="auth.js"></script>
+</body>
+</html>

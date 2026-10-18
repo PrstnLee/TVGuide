@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TV Guide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-space"></div>
+
+        <div class="search-container">
+            <input id="search-input" type="text" placeholder="Search for a show">
+            <button id="search-button" onclick="handleSearch()">Search</button>
+        </div>
+
+        <div class="account-area" id="account-area">
+            <a href="login.html" class="account-button">Log In</a>
+            <a href="signup.html" class="signup-button">Sign Up</a>
+        </div>
+    </header>
+
+    <div id="shows-container"></div>
+    <header class="page-header">
+        <h1>TV Guide</h1>
+        <button id="refresh-guide">Refresh</button>
+        <span id="guide-status">Loading schedule...</span>
+    </header>
+
+    <div class="guide-viewport" id="guide-viewport">
+        <div id="tv-guide"></div>
+    </div>
+
+    <div id="show-popup" class="popup-overlay" hidden>
+        <div class="show-popup-content"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="popup-title">
+
+            <button id="close-popup" class="close-popup"
+                    aria-label="Close popup">&times;</button>
+
+            <img id="popup-image" src="" alt="">
+
+            <div class="popup-details">
+                <h2 id="popup-title"></h2>
+                <p id="popup-runtime"></p>
+                <div id="popup-description"></div>
+
+                <!-- Administrator-only episode ratings -->
+                <section id="episode-rating" hidden
+                         aria-label="Episode ratings">
+                    <h3>Episode Rating</h3>
+
+                    <p id="community-rating">
+                        Community rating unavailable.
+                    </p>
+
+                    <div id="rating-controls" hidden>
+                        <p>Rate this episode:</p>
+
+                        <div class="rating-stars"
+                             role="group"
+                             aria-label="Choose a rating from one to five stars">
+                            <button type="button" data-rating="1"
+                                    aria-label="1 star">★</button>
+                            <button type="button" data-rating="2"
+                                    aria-label="2 stars">★</button>
+                            <button type="button" data-rating="3"
+                                    aria-label="3 stars">★</button>
+                            <button type="button" data-rating="4"
+                                    aria-label="4 stars">★</button>
+                            <button type="button" data-rating="5"
+                                    aria-label="5 stars">★</button>
+                        </div>
+
+                        <button id="submit-rating" type="button" disabled>
+                            Submit rating
+                        </button>
+                    </div>
+
+                    <p id="rating-message" aria-live="polite"></p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
